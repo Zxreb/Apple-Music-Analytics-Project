@@ -5,6 +5,8 @@ This project analyzes **10,000+ Apple Music tracks** using **Google Cloud SQL (P
 It explores pricing, genre trends, release patterns, and artist statistics using advanced SQL queries.  
 Future phases will include **Tableau** and **Power BI dashboards** for visual analytics.
 
+Dataset: https://www.kaggle.com/datasets/kanchana1990/apple-music-dataset-10000-tracks-uncovered
+
 ---
 
 ## Tech Stack
