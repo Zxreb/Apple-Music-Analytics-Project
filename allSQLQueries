@@ -1,0 +1,213 @@
+-- Table Creation
+
+CREATE TABLE IF NOT EXISTS apple_music_tracks (
+  artistId TEXT,
+  artistName TEXT,
+  collectionCensoredName TEXT,
+  collectionId TEXT,
+  collectionName TEXT,
+  collectionPrice TEXT,
+  contentAdvisoryRating TEXT,
+  country TEXT,
+  currency TEXT,
+  discCount TEXT,
+  discNumber TEXT,
+  isStreamable TEXT,
+  kind TEXT,
+  previewUrl TEXT,
+  primaryGenreName TEXT,
+  releaseDate TEXT,
+  trackCensoredName TEXT,
+  trackCount TEXT,
+  trackExplicitness TEXT,
+  trackId TEXT,
+  trackName TEXT,
+  trackNumber TEXT,
+  trackPrice TEXT,
+  trackTimeMillis TEXT
+);
+
+-- Top 10 Genres by Song Count
+
+SELECT COUNT(*) FROM apple_music_tracks;
+SELECT primaryGenreName, COUNT(*) AS total_songs
+FROM apple_music_tracks
+GROUP BY primaryGenreName
+ORDER BY total_songs DESC
+LIMIT 10;
+
+-- AVG Track Price by Genre
+
+SELECT primaryGenreName, 
+       ROUND(AVG(CAST(trackPrice AS NUMERIC)), 2) AS avg_price
+FROM apple_music_tracks
+WHERE trackPrice ~ '^[0-9.]+$'
+GROUP BY primaryGenreName
+ORDER BY avg_price DESC
+LIMIT 10;
+
+-- Most Common Artists
+
+SELECT artistName, COUNT(*) AS total_tracks
+FROM apple_music_tracks
+GROUP BY artistName
+ORDER BY total_tracks DESC
+LIMIT 10;
+
+-- AVG Collection Price by Artist
+
+SELECT artistName, 
+       ROUND(AVG(CAST(collectionPrice AS NUMERIC)), 2) AS avg_collection_price
+FROM apple_music_tracks
+WHERE collectionPrice ~ '^[0-9.]+$'
+GROUP BY artistName
+ORDER BY avg_collection_price DESC
+LIMIT 10;
+
+-- Yearly Song Release Distribution
+
+SELECT 
+  EXTRACT(YEAR FROM TO_TIMESTAMP(releaseDate, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')) AS year,
+  COUNT(*) AS total_releases
+FROM apple_music_tracks
+WHERE releaseDate IS NOT NULL
+  AND releaseDate ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'
+GROUP BY year
+ORDER BY year;
+
+-- Explicit Vs. Non-Explicit
+
+SELECT
+  trackexplicitness,
+  COUNT(*) AS track_count
+FROM apple_music_tracks
+GROUP BY trackexplicitness
+ORDER BY track_count DESC;
+
+-- AVG Track Time by Genre
+
+SELECT 
+    primaryGenreName AS genre,
+    ROUND(AVG(CAST(trackTimeMillis AS NUMERIC)) / 60000, 2) AS avg_duration_minutes
+FROM apple_music_tracks
+WHERE trackTimeMillis ~ '^[0-9]+$'
+GROUP BY genre
+ORDER BY avg_duration_minutes DESC;
+
+-- Top 5 Most Expensive Tracks by Artist
+
+SELECT
+  artistname,
+  trackName,
+  CAST(trackPrice AS NUMERIC) AS price
+FROM apple_music_tracks
+WHERE trackprice ~ '^[0-9.]+$'
+ORDER BY price DESC
+LIMIT 5;
+
+-- Most Popular Genre by Year
+
+SELECT 
+    EXTRACT(YEAR FROM TO_TIMESTAMP(releaseDate, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')) AS year,
+    primaryGenreName AS genre,
+    COUNT(*) AS total_releases
+FROM apple_music_tracks
+WHERE releaseDate ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'
+GROUP BY year, genre
+ORDER BY year, total_releases DESC;
+
+-- Artist with Most Explicit Songs
+
+SELECT 
+    artistName,
+    COUNT(*) AS explicit_count
+FROM apple_music_tracks
+WHERE LOWER(trackExplicitness) LIKE '%explicit%'
+GROUP BY artistName
+ORDER BY explicit_count DESC
+LIMIT 10;
+
+-- Price Differential by Explicit and Non-Explicit Music
+
+SELECT 
+    trackExplicitness,
+    ROUND(AVG(CAST(trackPrice AS NUMERIC)), 2) AS avg_price
+FROM apple_music_tracks
+WHERE trackPrice ~ '^[0-9.]+$'
+GROUP BY trackExplicitness;
+
+-- Highest Priced Genres
+
+SELECT 
+    primaryGenreName AS genre,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY CAST(trackPrice AS NUMERIC)) AS median_price
+FROM apple_music_tracks
+WHERE trackPrice ~ '^[0-9.]+$'
+GROUP BY genre
+ORDER BY median_price DESC
+LIMIT 10;
+
+-- Longest Tracks by Artists
+
+SELECT 
+    artistName,
+    ROUND(AVG(CAST(trackTimeMillis AS NUMERIC)) / 60000, 2) AS avg_length_minutes
+FROM apple_music_tracks
+WHERE trackTimeMillis ~ '^[0-9]+$'
+GROUP BY artistName
+HAVING COUNT(*) > 3
+ORDER BY avg_length_minutes DESC
+LIMIT 10;
+
+-- Distribution of Track Counts per Album
+
+SELECT 
+    trackCount,
+    COUNT(*) AS album_frequency
+FROM apple_music_tracks
+WHERE trackCount ~ '^[0-9]+$'
+GROUP BY trackCount
+ORDER BY trackCount;
+
+-- Avg Album Price vs Track Count
+
+SELECT 
+    CAST(trackCount AS INT) AS num_tracks,
+    ROUND(AVG(CAST(collectionPrice AS NUMERIC)), 2) AS avg_album_price
+FROM apple_music_tracks
+WHERE trackCount ~ '^[0-9]+$'
+  AND collectionPrice ~ '^[0-9.]+$'
+GROUP BY num_tracks
+ORDER BY num_tracks;
+
+-- Yearly Avg Track Duration 
+
+SELECT 
+    EXTRACT(YEAR FROM TO_TIMESTAMP(releaseDate, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')) AS year,
+    ROUND(AVG(CAST(trackTimeMillis AS NUMERIC)) / 60000, 2) AS avg_duration_min
+FROM apple_music_tracks
+WHERE releaseDate ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'
+  AND trackTimeMillis ~ '^[0-9]+$'
+GROUP BY year
+ORDER BY year;
+
+-- Genre Share by Explicitness
+
+SELECT 
+    primaryGenreName AS genre,
+    SUM(CASE WHEN LOWER(trackExplicitness) LIKE '%explicit%' THEN 1 ELSE 0 END) AS explicit_count,
+    COUNT(*) AS total_songs,
+    ROUND(SUM(CASE WHEN LOWER(trackExplicitness) LIKE '%explicit%' THEN 1 ELSE 0 END)::NUMERIC / COUNT(*) * 100, 2) AS explicit_pct
+FROM apple_music_tracks
+GROUP BY genre
+ORDER BY explicit_pct DESC;
+
+-- Genre vs Avg Album Size
+
+SELECT 
+    primaryGenreName AS genre,
+    ROUND(AVG(CAST(trackCount AS NUMERIC)), 1) AS avg_tracks_per_album
+FROM apple_music_tracks
+WHERE trackCount ~ '^[0-9]+$'
+GROUP BY genre
+ORDER BY avg_tracks_per_album DESC;
